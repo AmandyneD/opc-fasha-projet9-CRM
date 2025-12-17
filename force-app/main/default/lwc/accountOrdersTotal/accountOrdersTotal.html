@@ -1,0 +1,20 @@
+<template>
+    <template if:false={hasOrders}>
+        <div class="slds-box slds-theme_error">
+            <h1>Erreur : pas de commandes "Activated" pour ce compte, ou total ≤ 0.</h1>
+        </div>
+    </template>
+
+    <template if:true={hasOrders}>
+        <div class="slds-box slds-theme_success">
+            <h1>
+                Total des commandes :
+                <lightning-formatted-number
+                    value={sumOrdersOfCurrentAccount}
+                    format-style="currency"
+                    currency-code="USD">
+                </lightning-formatted-number>
+            </h1>
+        </div>
+    </template>
+</template>
