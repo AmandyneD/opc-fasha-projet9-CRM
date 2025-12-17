@@ -8,7 +8,7 @@ public with sharing class AccountRevenueService {
             SELECT AccountId accId, SUM(TotalAmount) total
             FROM Order
             WHERE AccountId IN :accountIds
-            AND Status = 'Activated'
+              AND Status = 'Activated'
             GROUP BY AccountId
         ]) {
             sumByAccount.put((Id) ar.get('accId'), (Decimal) ar.get('total'));

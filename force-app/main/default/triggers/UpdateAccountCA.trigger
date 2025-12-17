@@ -3,11 +3,17 @@ trigger UpdateAccountCA on Order (after insert, after update, after delete, afte
     Set<Id> accountIds = new Set<Id>();
 
     if (Trigger.isInsert || Trigger.isUpdate || Trigger.isUndelete) {
-        for (Order o : Trigger.new) if (o.AccountId != null) accountIds.add(o.AccountId);
+        for (Order o : Trigger.new) {
+            if (o.AccountId != null) accountIds.add(o.AccountId);
+        }
     }
     if (Trigger.isDelete) {
-        for (Order o : Trigger.old) if (o.AccountId != null) accountIds.add(o.AccountId);
+        for (Order o : Trigger.old) {
+            if (o.AccountId != null) accountIds.add(o.AccountId);
+        }
     }
 
-    AccountRevenueService.recalcRevenue(accountIds);
+    if (!accountIds.isEmpty()) {
+        AccountRevenueService.recalcRevenue(accountIds);
+    }
 }
