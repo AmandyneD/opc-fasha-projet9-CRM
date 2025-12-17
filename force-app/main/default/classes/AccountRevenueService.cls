@@ -14,15 +14,29 @@ public with sharing class AccountRevenueService {
             sumByAccount.put((Id) ar.get('accId'), (Decimal) ar.get('total'));
         }
 
+        List<Account> toUpdate = buildAccountsToUpdate(accountIds, sumByAccount);
+        if (!toUpdate.isEmpty()) update toUpdate;
+    }
+
+    private static List<Account> buildAccountsToUpdate(Set<Id> accountIds, Map<Id, Decimal> revenueByAccount) {
         List<Account> toUpdate = new List<Account>();
-        for (Account a : [SELECT Id, Chiffre_d_affaire__c FROM Account WHERE Id IN :accountIds]) {
-            Decimal newCA = sumByAccount.containsKey(a.Id) ? sumByAccount.get(a.Id) : 0;
-            if (a.Chiffre_d_affaire__c != newCA) {
+
+        for (Account a : [
+            SELECT Id, Chiffre_d_affaire__c
+            FROM Account
+            WHERE Id IN :accountIds
+        ]) {
+            Decimal newCA = revenueByAccount.containsKey(a.Id) ? revenueByAccount.get(a.Id) : 0;
+
+            Boolean isNullAndShouldBeZero = (a.Chiffre_d_affaire__c == null && newCA == 0);
+            Boolean isDifferent = (!isNullAndShouldBeZero) && (a.Chiffre_d_affaire__c != newCA);
+
+            if (isNullAndShouldBeZero || isDifferent) {
                 a.Chiffre_d_affaire__c = newCA;
                 toUpdate.add(a);
             }
         }
 
-        if (!toUpdate.isEmpty()) update toUpdate;
+        return toUpdate;
     }
 }
