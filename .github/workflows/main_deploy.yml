@@ -1,0 +1,84 @@
+name: Deploy and Validate Metadata
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+jobs:
+  sfdxvalidate:
+    name: Run SFDX Validate / Deploy
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Salesforce CLI and sfdx-git-delta
+        run: |
+          npm install -g @salesforce/cli@latest
+          echo "y" | npm install -g sfdx-git-delta@3.3.0
+
+      - name: Authenticate Salesforce
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          echo "$SFDX_AUTH_URL" > ./SFDX_AUTH_URL.txt
+          sf org login sfdx-url --sfdx-url-file ./SFDX_AUTH_URL.txt --alias CI --set-default
+          sf org display --target-org CI
+
+      - name: Generate metadata delta
+        run: |
+          mkdir -p .delta
+          # Base de comparaison :
+          # - PR : compare la branche PR avec origin/main
+          # - Push sur main : compare le commit précédent avec HEAD
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            sgd source delta --to "HEAD" --from "origin/main" --output ".delta" --generate-delta
+          else
+            sgd source delta --to "HEAD" --from "HEAD~1" --output ".delta" --generate-delta
+          fi
+
+          echo "---- Delta content ----"
+          ls -la .delta || true
+          echo "---- package.xml ----"
+          cat .delta/package/package.xml || true
+
+      - name: Validate deployment on Pull Request (check-only)
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f ".delta/package/package.xml" ]; then
+            sf project deploy start \
+              --manifest .delta/package/package.xml \
+              --test-level RunLocalTests \
+              --dry-run \
+              --target-org CI
+          else
+            echo "No package.xml generated - nothing to validate."
+          fi
+
+      - name: Deploy on main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ -f ".delta/package/package.xml" ]; then
+            sf project deploy start \
+              --manifest .delta/package/package.xml \
+              --test-level RunLocalTests \
+              --target-org CI
+          else
+            echo "No package.xml generated - nothing to deploy."
+          fi
