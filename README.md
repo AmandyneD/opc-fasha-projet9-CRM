@@ -1,42 +1,125 @@
-# Projet 9: Améliorez une organisation Salesforce pour votre entreprise
+Projet Salesforce – Optimisation, Tests & CI/CD
 
-## Prérequis
-Avant de commencer, assurez-vous d’avoir :
-- Un compte Salesforce valide avec un environnement sandbox ou de développement.
-- Les autorisations nécessaires pour créer des objets personnalisés et déployer des packages.
-- Git installé sur votre machine pour cloner le projet.
+Objectif du projet
 
-## Installation
+Ce projet a pour objectif de corriger, fiabiliser et optimiser une application Salesforce existante, tout en mettant en place :
+	•	des tests automatisés robustes (Apex & LWC),
+	•	une architecture conforme aux bonnes pratiques Salesforce,
+	•	un pipeline CI/CD pour automatiser les déploiements.
 
-### 1. Cloner le dépôt
-Commencez par cloner ce dépôt GitHub sur votre machine locale.
+Le projet se concentre principalement sur :
+	•	le calcul du Net Amount des commandes,
+	•	le calcul du chiffre d’affaires des comptes,
+	•	la performance et la maintenabilité du code,
+	•	la qualité et l’automatisation des tests.
 
-```bash
-git clone https://github.com/[votre-utilisateur]/[votre-repo].git
-cd [votre-repo]
-```
 
-### 2. Connexion à votre environnement Salesforce
-En utilisant Salesforce DX, connectez-vous à votre organisation Salesforce. Voir documentation : https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_auth_web_flow.htm
+Problèmes identifiés initialement
 
-```bash
-sf org login web --alias my-org [nom-de-votre-org]
-```
+1. Calcul du Net Amount
+	•	Calcul incorrect lors des opérations en masse (Data Loader)
+	•	Recalcul non systématique
+	•	Dépendance à l’ordre d’exécution Salesforce
+	•	Comportement incohérent entre saisie manuelle et import
 
-### 3. Déployer le projet sur Salesforce
-Une fois connecté, vous pouvez déployer le projet dans votre environnement Salesforce en exécutant la commande suivante (https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_push_md_to_scratch_org.htm) :
+2. Calcul du chiffre d’affaires (Account)
+	•	Erreurs lors de la mise à jour de comptes ayant un grand volume de commandes
+	•	Triggers non bulkifiés
+	•	Recalculs inutiles lors de mises à jour sans impact métier
 
-```bash
-sf project deploy start
-```
+3. Absence d’automatisation
+	•	Déploiements manuels
+	•	Tests non systématiques
+	•	Risque de régression élevé
 
-### 4. Vérification des objets
-Après le déploiement, connectez-vous à votre organisation Salesforce et vérifiez que les champs personnalisés pour les **Commandes (Order)** et **Comptes  (Account)** sont créés. Veuillez vérifier également que les classes / triggers et le composant Lightning Web Components ont bien été créés.
 
-## Utilisation
-- Accédez aux objets et champs **Commandes** et **Comptes** dans votre environnement Salesforce, puis assurez-vous que les profils disposent des autorisations appropriées pour effectuer des opérations CRUD.
 
-## Ressources supplémentaires
-- [Salesforce Developer Documentation](https://developer.salesforce.com/docs)
-- [Guide d'utilisation de Salesforce CLI](https://developer.salesforce.com/tools/sfdxcli)
+Solutions mises en place
 
+Refonte du calcul du Net Amount
+	•	Suppression du trigger existant défaillant
+	•	Création de nouveaux triggers compatibles bulk
+	•	Centralisation de la logique dans une classe de service
+	•	Gestion fiable des imports Data Loader
+
+Refonte du calcul du chiffre d’affaires
+	•	Trigger bulkifié et filtré (exécution uniquement si impact métier)
+	•	Centralisation du calcul dans AccountRevenueService
+	•	Recalcul basé uniquement sur les commandes Activated
+	•	Mise en place d’un batch dédié pour les migrations de données
+
+Refactorisation globale
+	•	Séparation claire Trigger / Handler / Service
+	•	Nommage explicite des classes et méthodes
+	•	Code plus lisible, maintenable et évolutif
+	•	Aucune altération de la logique métier
+
+
+Tests & Qualité
+
+Tests Apex
+	•	Tests unitaires du Net Amount
+	•	Tests bulk (simulation Data Loader)
+	•	Tests de recalcul du chiffre d’affaires
+	•	Tests de batch
+	•	Tests de filtrage du trigger (statut Activated uniquement)
+
+TestDataFactory
+	•	Centralisation de la création des données de test
+	•	Réduction de la duplication
+	•	Meilleure lisibilité et maintenabilité
+	•	Adoption progressive sans risque de régression
+
+Tests LWC (Jest)
+	•	Tests du composant accountOrdersTotal
+	•	Cas testés :
+	•	affichage du total > 0
+	•	affichage d’un message d’erreur si total = 0
+	•	gestion des erreurs Apex
+	•	rendu sans crash
+
+
+Pipeline CI/CD – GitHub Actions
+
+Un pipeline CI/CD a été mis en place avec GitHub Actions.
+
+Fonctionnement
+
+À chaque push ou merge sur la branche main, le pipeline :
+	1.	Installe Salesforce CLI
+	2.	Authentifie l’org Salesforce via SFDX Auth URL (secret GitHub)
+	3.	Déploie les métadonnées
+	4.	Exécute les tests Apex avec RunLocalTests
+
+Environnement cible : Salesforce Developer Edition
+
+Bénéfices
+	•	Déploiement automatique
+	•	Tests systématiques
+	•	Sécurisation des évolutions
+	•	Réduction du risque de régression
+
+
+Performance
+
+Avant
+	•	Recalculs inutiles
+	•	Erreurs sur gros volumes
+	•	Temps de traitement élevé
+
+Après
+	•	Recalcul uniquement si impact métier
+	•	Traitements bulkifiés
+	•	Réduction significative du temps d’exécution
+	•	Application plus stable et scalable
+
+  Bonnes pratiques appliquées
+	•	Triggers fins, sans logique métier
+	•	Logique centralisée dans des services
+	•	Bulkification systématique
+	•	Tests automatisés fiables
+	•	CI/CD simple et adapté au contexte du projet
+
+
+Projet réalisé par Amandyne Desfonds
+Formation Développeur Salesforce – OpenClassrooms
